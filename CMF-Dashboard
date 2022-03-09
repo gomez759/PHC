@@ -1,1 +1,2238 @@
+---
+title: "CalMedForce Impact"
+output: 
+  flexdashboard::flex_dashboard:
+    fig_retina: 1
+    css: styles.css
+    logo: CalMedForce_RGB_cobrand_tagline_reverse on PHC dark blue only.png
+    source: embed
+    smart: false
+runtime: shiny
+---
 
+```{r include = FALSE}
+
+library(tigris)
+library(dplyr)
+library(viridis)
+library(scales)
+library(shiny)
+library(ggplot2)
+library(knitr)
+library(leaflet)
+library(rsconnect)
+library(flexdashboard)
+library(htmltools)
+library(showtext)
+library(plotly)
+
+# READ IN DATA
+cali <- counties("California", cb = TRUE)
+
+colnames(cali)[6] <- "County"
+
+all_cycles <- read.csv("All Cycles.csv", stringsAsFactors = FALSE)
+awardees <- subset(all_cycles, Awarded.Yes.No == "Yes")
+rm(all_cycles)
+
+#get text ready for county summaries
+County_summary <- awardees %>% 
+  group_by(County, Discipline, Tier.Level) %>% 
+  summarize(n = n(),
+            Total.Awarded.Amount = sum(Award.Amount))
+
+County_summary$Total.Awarded.Amount <- dollar(County_summary$Total.Awarded.Amount)
+#####################################################################################################
+#Alameda
+Alameda <- County_summary %>% filter(County == "Alameda") 
+
+Alameda_mytext <- paste0("County: ", Alameda$County, "",
+                         "Tier Level: ", Alameda$Tier.Level, "",
+                         "IM Programs Awarded: ", Alameda$n[2], " & ", "Total Amount Awarded: ", Alameda$Total.Awarded.Amount[2], "",
+                         "OBGYN Programs Awarded: ", Alameda$n[3], " & ", "otal Amount Awarded: ", Alameda$Total.Awarded.Amount[3], "",
+                         "Peds Programs Awarded: ", Alameda$n[4], " & ", "Total Amount Awarded: ", Alameda$Total.Awarded.Amount[4], "",
+                         "EM Programs Awarded: ", Alameda$n[1], " & ", "Total Amount Awarded: ", Alameda$Total.Awarded.Amount[1], "",
+                         "Total Programs Awarded: 13 | Total Funds Awarded: $4,940,000", sep = " ")
+Alameda_mytext <- unique(Alameda_mytext)
+
+rm(Alameda)
+#Amador
+Amador_cost <- County_summary %>% filter(County == "Amador")
+Amador_text <-  paste0("County: ", Amador_cost$County, 
+                       "Tier Level: ", Amador_cost$Tier.Level, "",
+                       "FM Programs Awarded: ", Amador_cost$n, " & ", "Total Amount Awarded: ", Amador_cost$Total.Awarded.Amount, "",
+                       "Total Programs Awarded: 1 | Total Funds Awarded: $225,000", sep = " ")
+rm(Amador_cost)
+###Contra Costa####
+Contra_cost <- County_summary %>% filter(County == "Contra Costa")
+Conta_text <-  paste0("County: ", Contra_cost$County, "",
+                      "Tier Level: ", Contra_cost$Tier.Level, "",
+                      "IM Programs Awarded: ", Contra_cost$n, " & ", "Total Amount Awarded: ", Contra_cost$Total.Awarded.Amount, "",
+                      "Total Programs Awarded: 9 | Total Funds Awarded: $2,625,000", sep = " ")
+rm(Contra_cost)
+###Fresno
+Fresno <- County_summary %>% filter(County == "Fresno") 
+Fresno_mytext <- paste0("County: ", Fresno$County, "",
+                        "Tier Level: ", Fresno$Tier.Level, "",
+                        "FM Programs Awarded: ", Fresno$n[2], " & ", "Total Amount Awarded: ", Fresno$Total.Awarded.Amount[2], "",
+                        "IM Programs Awarded: ", Fresno$n[3], " & ", "Total Amount Awarded: ", Fresno$Total.Awarded.Amount[3], "",
+                        "OBGYN Programs Awarded: ", Fresno$n[4], " & ", "Total Amount Awarded: ", Fresno$Total.Awarded.Amount[4], "",
+                        "Peds Programs Awarded: ", Fresno$n[5], " & ", "Total Amount Awarded: ", Fresno$Total.Awarded.Amount[5], "",
+                        "EM Programs Awarded: ", Fresno$n[1], " & ", "Total Amount Awarded: ", Fresno$Total.Awarded.Amount[1], "",
+                        "Total Programs Awarded: 32 | Total Funds Awarded: $18,955,000", sep =" ")
+Fresno_mytext <- unique(Fresno_mytext)
+rm(Fresno)
+######Humboldt
+Humboldt_cost <- County_summary %>% filter(County == "Humboldt")
+Humboldt_text <-  paste0("County: ", Humboldt_cost$County, "", 
+                         "Tier Level: ", Humboldt_cost$Tier.Level, "",
+                         "FM Programs Awarded: ", Humboldt_cost$n, " & ", "Total Amount Awarded: ", Humboldt_cost$Total.Awarded.Amount, "",
+                         "Total Programs Awarded: 4 | Total Funds Awarded: $1,350,000", sep = " ")
+rm(Humboldt_cost)
+
+##Imperial
+imperial <- County_summary %>% filter(County == "Imperial")
+imperial_mytext <- paste0("County: ", imperial$County, "",
+                      "Tier Level: ", imperial$Tier.Level, "",
+                      "EM Programs Awarded: ", imperial$n[1], " & ", "Total Amount Awarded: ", imperial$Total.Awarded.Amount[1], "",
+                      "Total Programs Awarded: 1 | Total Funds Awarded: $200,000", sep =" ")
+imperial_mytext <- unique(imperial_mytext)
+rm(imperial)
+
+#####Kern
+Kern <- County_summary %>% filter(County == "Kern") 
+Kern_mytext <- paste0("County: ", Kern$County, "",
+                      "Tier Level: ", Kern$Tier.Level, "",
+                      "FM Programs Awarded: ", Kern$n[2], " & ", "Total Amount Awarded: ", Kern$Total.Awarded.Amount[2], "",
+                      "IM Programs Awarded: ", Kern$n[3], " & ", "Total Amount Awarded: ", Kern$Total.Awarded.Amount[3], "",
+                      "OBGYN Programs Awarded: ", Kern$n[4], " & ", "Total Amount Awarded: ", Kern$Total.Awarded.Amount[4], "",
+                      "EM Programs Awarded: ", Kern$n[1], " & ", "Total Amount Awarded: ", Kern$Total.Awarded.Amount[1], "",
+                      "Total Programs Awarded: 16 | Total Funds Awarded: $6,485,000", sep =" ")
+Kern_mytext <- unique(Kern_mytext)
+rm(Kern)
+#####Kings
+Kings_cost <- County_summary %>% filter(County == "Kings")
+Kings_text <-  paste0("County: ", Kings_cost$County, "", 
+                      "Tier Level: ", Kings_cost$Tier.Level, "",
+                      "FM Programs Awarded: ", Kings_cost$n, " & ", "Total Amount Awarded: ", Kings_cost$Total.Awarded.Amount, "",
+                      "Total Programs Awarded: 4 | Total Funds Awarded: $885,000", sep = " ")
+rm(Kings_cost)
+########Los Angeles
+Los_Angeles <- County_summary %>% filter(County == "Los Angeles") 
+Los_Angeles_mytext <- paste0("County: ", Los_Angeles$County, "",
+                             "Tier Level: ", Los_Angeles$Tier.Level, "",
+                             "FM Programs Awarded: ", Los_Angeles$n[2], " &", "Total Amount Awarded: ", Los_Angeles$Total.Awarded.Amount[2], "",
+                             "IM Programs Awarded: ", Los_Angeles$n[3], " & ", "Total Amount Awarded: ", Los_Angeles$Total.Awarded.Amount[3], "",
+                             "OBGYN Programs Awarded: ", Los_Angeles$n[4], " & ", "Total Amount Awarded: ", Los_Angeles$Total.Awarded.Amount[4], "",
+                             "Peds Programs Awarded: ", Los_Angeles$n[5], " & ", "Total Amount Awarded: ", Los_Angeles$Total.Awarded.Amount[5], "",
+                             "EM Programs Awarded: ", Los_Angeles$n[1], " & ", "Total Amount Awarded: ", Los_Angeles$Total.Awarded.Amount[1], "",
+                             "Total Programs Awarded: 67 | Total Funds Awarded: $24,395,000", sep =" ")
+Los_Angeles_mytext <- unique(Los_Angeles_mytext)
+rm(Los_Angeles)
+#####Madera
+Madera_cost <- County_summary %>% filter(County == "Madera")
+Madera_text <-  paste0("County: ", Madera_cost$County, "",
+                       "Tier Level: ", Madera_cost$Tier.Level, "",
+                       "Peds Programs Awarded: ", Madera_cost$n, " & ", "Total Amount Awarded: ", Madera_cost$Total.Awarded.Amount, "",
+                       "Total Programs Awarded: 4 | Total Funds Awarded: $3,470,000", sep = " ")
+rm(Madera_cost)
+#####Mendocino
+Mendocino_cost <- County_summary %>% filter(County == "Mendocino")
+Mendocino_text <-  paste0("County: ", Mendocino_cost$County, "", 
+                          "Tier Level: ", Mendocino_cost$Tier.Level, "",
+                          "FM Programs Awarded: ", Mendocino_cost$n, " & ", "Total Amount Awarded: ", Mendocino_cost$Total.Awarded.Amount, "",
+                          "Total Programs Awarded: 3 | Total Funds Awarded: $675,000", sep = " ")
+rm(Mendocino_cost)
+
+######Merced
+Merced_cost <- County_summary %>% filter(County == "Merced")
+Merced_text <-  paste0("County: ", Merced_cost$County, "", 
+                       "Tier Level: ", Merced_cost$Tier.Level, "",
+                          "FM Programs Awarded: ", Merced_cost$n, " & ", "Total Amount Awarded: ", Merced_cost$Total.Awarded.Amount, "",
+                       "Total Programs Awarded: 4 | Total Funds Awarded: $975,000", sep = " ")
+rm(Merced_cost)
+###Monterey
+Monterey_cost <- County_summary %>% filter(County == "Monterey")
+Monterey_text <-  paste0("County: ", Monterey_cost$County, "", 
+                         "Tier Level: ", Monterey_cost$Tier.Level, "",
+                         "FM Programs Awarded: ", Monterey_cost$n, " & ", "Total Amount Awarded: ", Monterey_cost$Total.Awarded.Amount, "",
+                         "Total Programs Awarded: 3 | Total Funds Awarded: $450,000", sep = " ")
+rm(Monterey_cost)
+#######Orange
+Orange <- County_summary %>% filter(County == "Orange") 
+Orange_mytext <- paste0("County: ", Orange$County, "", 
+                        "Tier Level: ", Orange$Tier.Level, "",
+                        "FM Programs Awarded: ", Orange$n[1], " & ", "Total Amount Awarded: ", Orange$Total.Awarded.Amount[1], "",
+                        "IM Programs Awarded: ", Orange$n[2], " & ", "Total Amount Awarded: ", Orange$Total.Awarded.Amount[2], "",
+                        "Peds Programs Awarded: ", Orange$n[3], " & ", "Total Amount Awarded: ", Orange$Total.Awarded.Amount[3], "",
+                        "Total Programs Awarded: 8 | Total Funds Awarded: $2,700,000", sep = " ")
+Orange_mytext <- unique(Orange_mytext)
+rm(Orange)
+#######Riverside
+Riverside <- County_summary %>% filter(County == "Riverside") 
+Riverside_mytext <- paste0("County: ", Riverside$County, "",
+                           "Tier Level: ", Riverside$Tier.Level, "",
+                           "FM Programs Awarded: ", Riverside$n[2], " & ", "Total Amount Awarded: ", Riverside$Total.Awarded.Amount[2], "",
+                           "IM Programs Awarded: ", Riverside$n[3], " & ", "Total Amount Awarded: ", Riverside$Total.Awarded.Amount[3], "",
+                           "EM Programs Awarded: ", Riverside$n[1], " & ", "Total Amount Awarded: ", Riverside$Total.Awarded.Amount[1], "",
+                           "Total Programs Awarded: 56 | Total Funds Awarded: $23,895,000", sep = " ")
+Riverside_mytext <- unique(Riverside_mytext)
+rm(Riverside)
+##############Sacramento
+Sacramento <- County_summary %>% filter(County == "Sacramento") 
+Sacramento_mytext <- paste0("County: ", Sacramento$County, "", 
+                            "Tier Level: ", Sacramento$Tier.Level, "",
+                            "FM Programs Awarded: ", Sacramento$n[1], " & ", "Total Amount Awarded: ", Sacramento$Total.Awarded.Amount[1], "",
+                            "IM Programs Awarded: ", Sacramento$n[2], " & ", "Total Amount Awarded: ", Sacramento$Total.Awarded.Amount[2], "",
+                            "OBGYN Programs Awarded: ", Sacramento$n[3], " & ", "Total Amount Awarded: ", Sacramento$Total.Awarded.Amount[3], "",
+                            "Peds Programs Awarded: ", Sacramento$n[4], " & ", "Total Amount Awarded: ", Sacramento$Total.Awarded.Amount[4], "",
+                            "Total Programs Awarded: 11 | Total Funds Awarded: $2,520,000", sep = " ")
+Sacramento_mytext <- unique(Sacramento_mytext)
+rm(Sacramento)
+###################San Bernardino
+San_Berna <- County_summary %>% filter(County == "San Bernardino") 
+San_Berna_mytext <- paste0("County: ", San_Berna$County, "", 
+                           "Tier Level: ", San_Berna$Tier.Level, "",
+                           "FM Programs Awarded: ", San_Berna$n[2], " & ", "Total Amount Awarded: ", San_Berna$Total.Awarded.Amount[2], "",
+                           "IM Programs Awarded: ", San_Berna$n[3], " & ", "Total Amount Awarded: ", San_Berna$Total.Awarded.Amount[3], "",
+                           "OBGYN Programs Awarded: ", San_Berna$n[4], " & ", "Total Amount Awarded: ", San_Berna$Total.Awarded.Amount[4], "",
+                           "Peds Programs Awarded: ", San_Berna$n[5], " & ", "Total Amount Awarded: ", San_Berna$Total.Awarded.Amount[5], "",
+                           "EM Programs Awarded: ", San_Berna$n[1], " & ", "Total Amount Awarded: ", San_Berna$Total.Awarded.Amount[1], "",
+                           "Total Programs Awarded: 38 | Total Funds Awarded: $21,380,000", sep = " ")
+San_Berna_mytext <- unique(San_Berna_mytext)
+rm(San_Berna)
+######San Diego
+San_Di <- County_summary %>% filter(County == "San Diego") 
+San_Di_mytext <- paste0("County: ", San_Di$County, "", 
+                        "Tier Level: ", San_Di$Tier.Level, "",
+                        "FM Programs Awarded: ", San_Di$n[2], " & ", "Amount Awarded: ", San_Di$Total.Awarded.Amount[2], "",
+                        "IM Programs Awarded: ", San_Di$n[3], " & ", "Amount Awarded: ", San_Di$Total.Awarded.Amount[3], "",
+                        "OBGYN Programs Awarded: ", San_Di$n[4], " & ", "Amount Awarded: ", San_Di$Total.Awarded.Amount[4], "",
+                        "Peds Programs Awarded: ", San_Di$n[5], " & ", "Amount Awarded: ", San_Di$Total.Awarded.Amount[5], "",
+                        "EM Programs Awarded: ", San_Di$n[1], " & ", "Amount Awarded: ", San_Di$Total.Awarded.Amount[1], "",
+                        "Total Programs Awarded: 18 | Total Funds Awarded: $5,990,000", sep = " ")
+San_Di_mytext <- unique(San_Di_mytext)
+rm(San_Di)
+######San Fran
+San_Fran <- County_summary %>% filter(County == "San Francisco") 
+San_Fran_mytext <- paste0("County: ", San_Fran$County, "", 
+                          "Tier Level: ", San_Fran$Tier.Level, "",
+                           "OBGYN Programs Awarded: ", San_Fran$n[2], " & ", "Total Amount Awarded: ", San_Fran$Total.Awarded.Amount[2], "",
+                           "Peds Programs Awarded: ", San_Fran$n[3], " & ", "Total Amount Awarded: ", San_Fran$Total.Awarded.Amount[3], "",
+                           "EM Programs Awarded: ", San_Fran$n[1], " & ", "Total Amount Awarded: ", San_Fran$Total.Awarded.Amount[1], "",
+                           "Total Programs Awarded: 12 | Total Funds Awarded: $4,470,000", sep = " ")
+San_Fran_mytext <- unique(San_Fran_mytext)
+rm(San_Fran)
+####San Joaquin
+San_Joaq <- County_summary %>% filter(County == "San Joaquin") 
+San_Joaq_mytext <- paste0("County: ", San_Joaq$County, "", 
+                          "Tier Level: ", San_Joaq$Tier.Level, "",
+                          "FM Programs Awarded: ", San_Joaq$n[2], " & ", "Total Amount Awarded: ", San_Joaq$Total.Awarded.Amount[2], "",
+                          "IM Programs Awarded: ", San_Joaq$n[3], " & ", "Total Amount Awarded: ", San_Joaq$Total.Awarded.Amount[3], "",
+                          "EM Programs Awarded: ", San_Joaq$n[1], " & ", "Total Amount Awarded: ", San_Joaq$Total.Awarded.Amount[1], "",
+                          "Total Programs Awarded: 19 | Total Funds Awarded: $9,675,000", sep = " ")
+San_Joaq_mytext <- unique(San_Joaq_mytext)
+rm(San_Joaq)
+###San Mateo
+San_Mat_cost <- County_summary %>% filter(County == "San Mateo")
+San_Mat_text <-  paste0("County: ", San_Mat_cost$County, "", 
+                        "Tier Level: ", San_Mat_cost$Tier.Level, "",
+                        "Peds Programs Awarded: ", San_Mat_cost$n, " & ", "Total Amount Awarded: ", San_Mat_cost$Total.Awarded.Amount, "",
+                        "Total Programs Awarded: 3 | Total Funds Awarded: $1,660,000", sep = " ")
+rm(San_Mat_cost)
+#####Santa Barbara
+Santa_Barbs_cost <- County_summary %>% filter(County == "Santa Barbara")
+Santa_Barbs_text <-  paste0("County: ", Santa_Barbs_cost$County, "", 
+                            "Tier Level: ", Santa_Barbs_cost$Tier.Level, "",
+                            "FM Programs Awarded: ", Santa_Barbs_cost$n[1], "", "Total Amount Awarded: ", Santa_Barbs_cost$Total.Awarded.Amount[1], "",
+                            "OBGYN Programs Awarded: ", Santa_Barbs_cost$n[2], " & ", "Total Amount Awarded: ", Santa_Barbs_cost$Total.Awarded.Amount[2], "",
+                            "Peds Programs Awarded: ", Santa_Barbs_cost$n[3], " & ", "Total Amount Awarded: ", Santa_Barbs_cost$Total.Awarded.Amount[3], "",
+                            "Total Programs Awarded: 7 | Total Funds Awarded: $3,675,000", sep = " ")
+Santa_Barbs_text <- unique(Santa_Barbs_text)
+rm(Santa_Barbs_cost)
+#######Santa Clara
+Santa_Clara <- County_summary %>% filter(County == "Santa Clara") 
+Santa_Clara_mytext <- paste0("County: ", Santa_Clara$County, "", 
+                             "Tier Level: ", Santa_Clara$Tier.Level, "",
+                             "FM Programs Awarded: ", Santa_Clara$n[1], " & ", "Total Amount Awarded: ", Santa_Clara$Total.Awarded.Amount[1], "",
+                             "IM Programs Awarded: ", Santa_Clara$n[2], " & ", "Total Amount Awarded: ", Santa_Clara$Total.Awarded.Amount[2], "",
+                             "OBGYN Programs Awarded: ", Santa_Clara$n[3], " & ", "Total Amount Awarded: ", Santa_Clara$Total.Awarded.Amount[3], "",
+                             "Peds Programs Awarded: ", Santa_Clara$n[4], " & ", "Total Amount Awarded: ", Santa_Clara$Total.Awarded.Amount[4], "",
+                             "Total Programs Awarded: 8 | Total Funds Awarded: $2,125,000", sep = " ")
+Santa_Clara_mytext <- unique(Santa_Clara_mytext)
+rm(Santa_Clara)
+#####Shasta
+Shasta_cost <- County_summary %>% filter(County == "Shasta")
+Shasta_text <-  paste0("County: ", Shasta_cost$County, "", 
+                       "Tier Level: ", Shasta_cost$Tier.Level, "",
+                       "FM Programs Awarded: ", Shasta_cost$n[1], " & ", "Total Amount Awarded: ", Shasta_cost$Total.Awarded.Amount[1], "",
+                       "IM Programs Awarded: ", Shasta_cost$n[2], " & ", "Total Amount Awarded: ", Shasta_cost$Total.Awarded.Amount[2], "",
+                       "Total Programs Awarded: 5 | Total Funds Awarded: $1,080,000", sep = " ")
+Shasta_text <- unique(Shasta_text)
+rm(Shasta_cost)
+#####Sonoma
+Sonoma_cost <- County_summary %>% filter(County == "Sonoma")
+Sonoma_text <-  paste0("County: ", Sonoma_cost$County, "", 
+                       "Tier Level: ", Sonoma_cost$Tier.Level, "",
+                       "FM Programs Awarded: ", Sonoma_cost$n, " & ", "Total Amount Awarded: ", Sonoma_cost$Total.Awarded.Amount, "",
+                       "Total Programs Awarded: 6 | Total Funds Awarded: $1,125,000", sep = " " )
+rm(Sonoma_cost)
+##############Stanislaus
+Stanislaus <- County_summary %>% filter(County == "Stanislaus") 
+Stanislaus_mytext <- paste0("County: ", Stanislaus$County, "", 
+                            "Tier Level: ", Stanislaus$Tier.Level, "",
+                            "FM Programs Awarded: ", Stanislaus$n[2], " & ", "Total Amount Awarded: ", Stanislaus$Total.Awarded.Amount[2], "",
+                            "EM Programs Awarded: ", Stanislaus$n[1], " & ", "Total Amount Awarded: ", Stanislaus$Total.Awarded.Amount[1], "", 
+                            "Total Programs Awarded: 5 | Total Funds Awarded: $900,000", sep = " ")
+Stanislaus_mytext <- unique(Stanislaus_mytext)
+rm(Stanislaus)
+######Tulare
+Tulare <- County_summary %>% filter(County == "Tulare") 
+Tulare_mytext <- paste0("County: ", Tulare$County, "", 
+                        "Tier Level: ", Tulare$Tier.Level, "",
+                        "FM Programs Awarded: ", Tulare$n[2], " & ", "Total Amount Awarded: ", Tulare$Total.Awarded.Amount[2], "",
+                        "EM Programs Awarded: ", Tulare$n[1], " & ", "Total Amount Awarded: ", Tulare$Total.Awarded.Amount[1], "",
+                        "Total Programs Awarded: 8 | Total Funds Awarded: $1,830,000", sep = " ")
+Tulare_mytext <- unique(Tulare_mytext)
+rm(Tulare)
+####Ventura
+Ventura <- County_summary %>% filter(County == "Ventura") 
+Ventura_mytext <- paste0("County: ", Ventura$County, "", 
+                         "Tier Level: ", Ventura$Tier.Level, "",
+                         "FM Programs Awarded: ", Ventura$n[2], " & ", "Total Amount Awarded: ", Ventura$Total.Awarded.Amount[2], "",
+                         "EM Programs Awarded: ", Ventura$n[1], " & ", "Total Amount Awarded: ", Ventura$Total.Awarded.Amount[1], "", 
+                         "Total Programs Awarded: 10 | Total Funds Awarded: $2,010,000", sep = " ")
+Ventura_mytext <- unique(Ventura_mytext)
+rm(Ventura)
+
+
+x <- c(Alameda_mytext, Amador_text, Conta_text, Fresno_mytext,
+       Humboldt_text, imperial_mytext, Kern_mytext, Kings_text, Los_Angeles_mytext,
+       Madera_text, Mendocino_text, Merced_text, Monterey_text,
+       Orange_mytext, Riverside_mytext, Sacramento_mytext, San_Berna_mytext,
+       San_Di_mytext, San_Fran_mytext, San_Joaq_mytext, San_Mat_text, Santa_Barbs_text,
+       Santa_Clara_mytext, Shasta_text, Sonoma_text, Stanislaus_mytext, Tulare_mytext, Ventura_mytext)
+
+
+rm(list = c("Alameda_mytext", "Amador_text", "Conta_text", "Fresno_mytext", "imperial_mytext",
+       "Humboldt_text", "Kern_mytext", "Kings_text", "Los_Angeles_mytext",
+       "Madera_text", "Mendocino_text", "Merced_text", "Monterey_text",
+       "Orange_mytext", "Riverside_mytext", "Sacramento_mytext", "San_Berna_mytext",
+       "San_Di_mytext", "San_Fran_mytext", "San_Joaq_mytext", "San_Mat_text", "Santa_Barbs_text",
+       "Santa_Clara_mytext", "Shasta_text", "Sonoma_text", "Stanislaus_mytext", "Tulare_mytext", "Ventura_mytext"))
+
+x <- as.data.frame(x)
+rm(County_summary)
+
+#Get group by county and join text
+county_summaries <- awardees %>% 
+  group_by(County, Tier.Level) %>% 
+  summarize(n = n(),
+            positions = sum(Positions.Awarded),
+            funds = sum(Award.Amount))
+
+awardee_counties <- cbind(county_summaries, x)
+rm(x)
+rm(county_summaries)
+rm(awardees)
+
+#merge county to graphing dataset
+cali_joined <- left_join(cali, awardee_counties, by = "County")
+
+gc()
+
+```
+
+```{r}
+
+#####info for grad comparisions#########################################################
+
+#read in data on grads
+grads <- read.csv("Grad_data.csv", stringsAsFactors = FALSE)
+
+#subset for grads that practice more that 50%
+Grad_cali <- filter(grads, State == "California" & County != "Out of State" & Speciality == "Yes")
+rm(grads)
+
+#Grads by County
+
+grads_county <- Grad_cali %>% 
+  group_by(County) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Total Number of Grads: ", n))
+
+
+#group grads by county and discipline
+grads_grouped <- Grad_cali %>% 
+  count(County, Specialty) %>% 
+  group_by(County, Specialty) %>% 
+  mutate(my_text = paste0("County: ", County, "",
+                          "Discipline: ", Specialty, "",
+                          "Total Number of Graduates: ", n, sep = " "))
+
+rm(Grad_cali)
+
+#join county map with grads by county
+county_grads <- left_join(cali, grads_county, by = "County")
+
+#join the county map with grad data
+grads_discipline <- left_join(cali, grads_grouped, by = "County")
+grads_discipline$Specialty[is.na(grads_discipline$Specialty)] <- "Not Applicable"
+grads_discipline$n[is.na(grads_discipline$n)] <- 0
+
+
+```
+
+```{r}
+####Data manipulation for all awardees
+#read in data for all cycles
+
+all_cycles <- read.csv("All Cycles.csv", stringsAsFactors = FALSE)
+
+all_awardees <- all_cycles %>% filter(Awarded.Yes.No == "Yes")
+rm(all_cycles)
+
+#read in PCP map
+pcp <- read.csv("PCP.csv", stringsAsFactors = FALSE)
+
+
+#read in data to map out cali
+cali <- counties("California", cb = TRUE)
+
+colnames(cali)[6] <- "County"
+
+pcp_cali <- inner_join(cali, pcp, by = "County")
+
+pcp_cali <- pcp_cali %>% 
+  mutate(ratio = (Primary.Care / Population) * 100000)
+
+
+
+
+```
+
+```{r}
+#gather data for breakdown of total awardees and residents by discipline and program type
+all_cycles <- read.csv("All Cycles.csv", stringsAsFactors = FALSE)
+awardees <- subset(all_cycles, Awarded.Yes.No == "Yes")
+rm(all_cycles)
+
+grouped_all <- awardees %>% 
+  group_by(Discipline) %>% 
+   summarize(positions_awarded = sum(New.Positions.Awarded, na.rm = TRUE) +
+           sum(Expanded.Positions.Awarded, na.rm = TRUE) +
+            sum(Existing.Positions.Awarded, na.rm = TRUE))
+
+grouped_all$Cycle <- "All Cycles"
+
+grouped_all <- select(grouped_all, Discipline, Cycle, positions_awarded)
+
+grouped_disicipline <- awardees %>% 
+  group_by(Discipline, Cycle) %>% 
+   summarize(positions_awarded = sum(New.Positions.Awarded, na.rm = TRUE) +
+           sum(Expanded.Positions.Awarded, na.rm = TRUE) +
+            sum(Existing.Positions.Awarded, na.rm = TRUE))
+
+all_disciplines <- rbind(grouped_disicipline, grouped_all)
+
+rm(grouped_disicipline)
+rm(grouped_all)
+
+#grouped_type <- awardees %>% 
+  #group_by(Program.Type) %>% 
+   #summarize(total.positions = sum(New.Positions.Awarded, na.rm = TRUE) +
+           #sum(Expanded.Positions.Awarded, na.rm = TRUE) +
+            #sum(Existing.Positions.Awarded, na.rm = TRUE))
+
+#grouped_type$Discipline <- "All Disciplines"
+
+#grouped_type <- select(grouped_type, Discipline, Program.Type, total.positions)
+
+total.new <- sum(awardees$New.Positions.Awarded, na.rm = TRUE)
+total.exp <- sum(awardees$Expanded.Positions.Awarded, na.rm = TRUE)
+total.exist <- sum(awardees$Existing.Positions.Awarded, na.rm = TRUE)
+
+
+
+new.p <- c("All Disciplines", "New", total.new)
+exp.p <- c("All Disciplines", "Expanding", total.exp)
+exist.p <- c("All Disciplines", "Existing", total.exist)
+
+
+total.cycles <- data.frame("Discipline", "Program.Type", "total.positions")
+all_cycles_t <- rbind(total.cycles, new.p, exp.p, exist.p)
+rm(total.cycles)
+
+all_cyclesT <- all_cycles_t[-1, ]
+rm(all_cycles_t)
+
+
+colnames(all_cyclesT) <- c("Discipline", "Program.Type", "total.positions")
+
+all_cyclesT$total.positions <- as.integer(all_cyclesT$total.positions)
+
+grouped_typ_D <- awardees %>% 
+  group_by(Discipline, Program.Type) %>% 
+   summarize(total.positions = sum(New.Positions.Awarded, na.rm = TRUE) +
+           sum(Expanded.Positions.Awarded, na.rm = TRUE) +
+            sum(Existing.Positions.Awarded, na.rm = TRUE))
+
+all_types <- rbind(grouped_typ_D, all_cyclesT)
+rm(grouped_typ_D)
+
+
+```
+
+```{r}
+### Data for PCP by disicipline
+
+physicians <- read.csv("physicians-specialty-patient-care.csv", stringsAsFactors = FALSE)
+physicians$Population <- as.integer(physicians$Population)
+
+# Get data ready for family medicine
+fm <- physicians %>% 
+  filter(Primary.Area.of.Practice == "Family Medicine - Primary" & 
+         Activities.in.Medicine != "No Response" & 
+         Activities.in.Medicine != "Patient Care - None" & 
+         Activities.in.Medicine != "Patient Care - 1-9 Hours" &
+         Activities.in.Medicine !="Patient Care - 10-19 Hours") %>% 
+group_by(County, Population) %>% 
+  summarize(n = sum(Count.of.Physicians, na.rm = TRUE)) %>% 
+  mutate(ratio = (n / Population) * 100000) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Number of FM Physicians: ", n, "",
+                         "County Population: ", prettyNum(Population, big.mark = ","), "",
+                         "Ratio per 100,000 population: ", round(ratio, 2))) %>% 
+  mutate(text1 = paste0("County: ", County, "",
+                        "Ratio: ", round(ratio, 2), sep = ""))
+
+
+fm_phy <- left_join(cali, fm, by = "County")
+rm(fm)
+
+### Get data ready for Emergency Medicine
+em <- physicians %>% 
+  filter(Primary.Area.of.Practice == "Emergency Medicine - Primary" & 
+         Activities.in.Medicine != "No Response" & 
+         Activities.in.Medicine != "Patient Care - None" & 
+         Activities.in.Medicine != "Patient Care - 1-9 Hours" &
+         Activities.in.Medicine !="Patient Care - 10-19 Hours") %>% 
+group_by(County, Population) %>% 
+  summarize(n = sum(Count.of.Physicians, na.rm = TRUE)) %>% 
+  mutate(ratio = (n / Population) * 100000) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Number of EM Physicians: ", n, "",
+                         "County Population: ", prettyNum(Population, big.mark = ","), "",
+                         "Ratio per 100,000 population: ", round(ratio, 2))) %>% 
+  mutate(text1 = paste0("County: ", County, "",
+                        "Ratio: ", round(ratio, 2), sep = ""))
+
+em_phy <- left_join(cali, em, by = "County")
+rm(em)
+
+### Get data ready for Emergency Medicine
+im <- physicians %>% 
+  filter(Primary.Area.of.Practice == "Internal Medicine - Primary" & 
+         Activities.in.Medicine != "No Response" & 
+         Activities.in.Medicine != "Patient Care - None" & 
+         Activities.in.Medicine != "Patient Care - 1-9 Hours" &
+         Activities.in.Medicine !="Patient Care - 10-19 Hours") %>% 
+group_by(County, Population) %>% 
+  summarize(n = sum(Count.of.Physicians, na.rm = TRUE)) %>% 
+  mutate(ratio = (n / Population) * 100000) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Number of IM Physicians: ", n, "",
+                         "County Population: ", prettyNum(Population, big.mark = ","), "",
+                         "Ratio per 100,000 population: ", round(ratio,2))) %>% 
+  mutate(text1 = paste0("County: ", County, "",
+                        "Ratio: ", round(ratio, 2), sep = ""))
+
+im_phy <- left_join(cali, im, by = "County")
+rm(im)
+
+### Get data ready for Emergency Medicine
+peds <- physicians %>% 
+  filter(Primary.Area.of.Practice == "Pediatrics - Primary" & 
+         Activities.in.Medicine != "No Response" & 
+         Activities.in.Medicine != "Patient Care - None" & 
+         Activities.in.Medicine != "Patient Care - 1-9 Hours" &
+         Activities.in.Medicine !="Patient Care - 10-19 Hours") %>% 
+group_by(County, Population) %>% 
+  summarize(n = sum(Count.of.Physicians, na.rm = TRUE)) %>% 
+  mutate(ratio = (n / Population) * 100000) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Number of Pediatric Physicians: ", n, "", 
+                         "County Population: ", prettyNum(Population, big.mark = ","), "",
+                         "Ratio per 100,000 population: ", round(ratio, 2), sep = "")) %>% 
+  mutate(text1 = paste0("County: ", County, "",
+                        "Ratio: ", round(ratio, 2), sep = ""))
+
+peds_phy <- left_join(cali, peds, by = "County")
+rm(peds)
+
+### Get data ready for Emergency Medicine
+ob <- physicians %>% 
+  filter(Primary.Area.of.Practice == "Obstetrics and Gynecology - Primary" & 
+         Activities.in.Medicine != "No Response" & 
+         Activities.in.Medicine != "Patient Care - None" & 
+         Activities.in.Medicine != "Patient Care - 1-9 Hours" &
+         Activities.in.Medicine !="Patient Care - 10-19 Hours") %>% 
+group_by(County, Population) %>% 
+  summarize(n = sum(Count.of.Physicians, na.rm = TRUE)) %>% 
+  mutate(ratio = (n / Population) * 100000) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Number of OBGYN Physicians: ", n, "",
+                         "County Population: ", prettyNum(Population, big.mark = ","), "",
+                         "Ratio per 100,000 population: ", round(ratio, 2), sep = "")) %>% 
+  mutate(text1 = paste0("County: ", County, "",
+                        "Ratio: ", round(ratio, 2), sep = ""))
+
+ob_phy <- left_join(cali, ob, by = "County")
+rm(ob)
+rm(physicians)
+
+```
+
+```{r}
+#disicpline level data
+
+all_cycles <- read.csv("All Cycles.csv", stringsAsFactors = FALSE)
+awardees <- subset(all_cycles, Awarded.Yes.No == "Yes")
+rm(all_cycles)
+
+#Family Medicine
+
+fm_data <- awardees %>% 
+  filter(Discipline == "FM")
+
+fm_county <- fm_data %>% 
+  group_by(Discipline, County) %>% 
+  summarize(n = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Discipline: ", Discipline, "",
+                         "Number of FM Residents: ", n, sep = "")) %>% 
+  mutate(text2 = paste0("County: ", County, "",
+                        "# of Residents: ", n, sep = ""))
+
+fm_joined <- left_join(cali, fm_county, by = "County")
+rm(fm_county)
+
+# Internal Medicine
+im_data <- awardees %>% 
+  filter(Discipline == "IM")
+
+im_county <- im_data %>% 
+  group_by(Discipline, County) %>% 
+  summarize(n = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Discipline: ", Discipline, "",
+                         "Number of IM Residents: ", n, sep = ""))
+
+im_joined <- left_join(cali, im_county, by = "County")
+rm(im_county)
+
+#Peds
+Peds_data <- awardees %>% 
+  filter(Discipline == "Peds")
+
+peds_county <- Peds_data %>% 
+  group_by(Discipline, County) %>% 
+  summarize(n = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Discipline: ", Discipline, "",
+                         "Number of Ped Residents: ", n, sep = ""))
+
+peds_joined <- left_join(cali, peds_county, by = "County")
+rm(peds_county)
+
+#OB
+OB_data <- awardees %>% 
+  filter(Discipline == "OBGYN")
+
+ob_county <- OB_data %>% 
+  group_by(Discipline, County) %>% 
+  summarize(n = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Discipline: ", Discipline, "",
+                         "Number of OBGYN Residents: ", n, sep = ""))
+
+ob_joined <- left_join(cali, ob_county, by = "County")
+rm(ob_county)
+
+# EM
+em_data <- awardees %>% 
+  filter(Discipline == "EM")
+
+em_county <- em_data %>% 
+  group_by(Discipline, County) %>% 
+  summarize(n = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste0("County: ", County, "",
+                         "Discipline: ", Discipline, "",
+                         "Number of EM Residents: ", n, sep = ""))
+
+em_joined <- left_join(cali, em_county, by = "County")
+rm(em_county)
+
+
+
+
+```
+
+Impact summary
+=====================================  
+
+Columns {data-width=800}
+-------------------------------------
+
+### CalMedForce Impact Map Summary
+
+```{r}
+
+renderLeaflet({
+  
+  
+  ###Create leaflet map
+cali_joined$text3 <- sprintf(
+"%s",
+ cali_joined$x) %>% 
+ lapply(htmltools::HTML)
+
+
+cali_joined$Tier.level <- factor(cali_joined$Tier.Level)
+
+test_tiers <- colorFactor(c("#10C637", "#042B46", "#FF982C"), na.color = "white", cali_joined$Tier.level)
+
+leaflet(cali_joined) %>% 
+  addPolygons(fillColor = test_tiers(cali_joined$Tier.level),
+              popup = cali_joined$text3,
+              popupOptions = popupOptions(maxWidth = 500),
+              label = cali_joined$County,
+             labelOptions = labelOptions(style = list("font-weight" = "normal", 
+                                                        padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "25px",
+                                          direction = "auto",
+                                          interactive = TRUE),
+              color = "#444444",
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(weight = 5,
+                                           color = "#666",
+                                           fillOpacity = 0,7,
+                                           bringToFront = TRUE))
+})
+```   
+
+
+Columns {data-width=200}
+-------------------------------------
+### Programs Awarded to Date
+
+```{r}
+
+data <- read.csv("All Cycles.csv", stringsAsFactors = FALSE)
+dt <- subset(data, Awarded.Yes.No == "Yes")
+rm(data)
+
+dt <- subset(dt, Info != "Delete")
+
+x <- length(dt$Program.Name)
+
+
+
+renderValueBox({
+
+total_P <- x
+
+valueBox(total_P,
+         caption = "# of Programs Awarded",
+               icon = "fa-hospital-o",
+               color = "#10C637")
+})
+
+
+```
+
+### Resident Positions Funded to Date
+
+```{r}
+
+renderValueBox({
+
+total_P <- sum(cali_joined$positions, na.rm = TRUE)
+
+valueBox(total_P,
+         caption = "# of Resident Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded to Date
+
+```{r}
+
+renderValueBox({
+
+#total_P <- dollar(sum(cali_joined$funds, na.rm = TRUE))
+
+valueBox("$151,790,000",
+         caption = "Total Funds Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+### Legend
+
+ Green = Tier One County (High Priority County)
+ Blue = Tier Two County
+ Orange = Tier Three County
+
+Each county that is color coded means they have GME programs that have been awarded by the CalMedForce Grant. Select on a county to view the county level summary. County level summary contains the number of programs awarded by discipline, total funds awarded by discipline, and overall totals.
+
+
+Graduates {data-orientation=rows}
+=====================================  
+
+Sidebar {.sidebar}
+-------------------------------------
+Disciplines by County
+
+```{r}
+
+
+selectInput(inputId = "Discipline",
+           label = "Select Discipline",
+           choices = unique(grads_discipline$Specialty),
+           selected = "Family Medicine")
+
+p("The filter button filters the map on the far right. Select on a discipline to view which counties the graduates are located.")
+```
+
+Row 
+-------------------------------------
+
+### FM Graduates
+
+```{r}
+renderValueBox({
+
+total_fm <- sum(grads_discipline$n[grads_discipline$Specialty == "Family Medicine"])
+
+valueBox(total_fm,
+         caption = "# of FM Grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### IM Graduates
+
+```{r}
+
+renderValueBox({
+
+total_im <- sum(grads_discipline$n[grads_discipline$Specialty == "Internal Medicine"])
+
+valueBox(total_im,
+         caption = "# of IM Grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Ped Graduates
+
+```{r}
+renderValueBox({
+
+total_peds <- sum(grads_discipline$n[grads_discipline$Specialty == "Pediatrics"])
+
+
+valueBox(total_peds,
+         caption = "# of Ped Grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### OBGYN Graduates
+
+```{r}
+renderValueBox({
+
+total_ob <- sum(grads_discipline$n[grads_discipline$Specialty == "Obstetrics and Gynecology"])
+
+valueBox(total_ob,
+         caption = "# of OBGYN Grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Combined Program Graduates
+
+```{r}
+renderValueBox({
+
+total_cb <- sum(grads_discipline$n[grads_discipline$Specialty == "Combined Program"])
+
+valueBox(total_cb,
+         caption = "# of combinedprogram grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### EM Graduates
+
+```{r}
+renderValueBox({
+
+total_em <- sum(grads_discipline$n[grads_discipline$Specialty == "Emergency Medicine"])
+
+valueBox(total_em,
+         caption = "# of EM Grads",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+
+Column
+-------------------------------------
+
+### Total Graduates by County
+
+```{r}
+
+renderLeaflet({
+
+  county_grads$text3 <- sprintf(
+"%s",
+ county_grads$mytext) %>% 
+ lapply(htmltools::HTML)  
+
+
+  pal <- colorNumeric(palette = "viridis",  domain = county_grads$n, na.color = "white")
+
+leaflet(county_grads) %>% 
+  addPolygons(fillColor = pal(county_grads$n),
+              color = "#444444",
+              smoothFactor = .5,
+              popup = county_grads$text3,
+              label = county_grads$County,
+               labelOptions = labelOptions(style = list("font-weight" = "normal", 
+                                                        padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "25px",
+                                          direction = "auto",
+                                          interactive = TRUE),
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(weight = 5,
+                                           color = "#666",
+                                           fillOpacity = 0,7,
+                                           bringToFront = TRUE)) %>% 
+              addLegend(title = "Total Number of Grads", pal = pal, values = ~county_grads$n, opacity = 0.7,
+  position = "topright", na.label = "")
+})
+```   
+
+### Grads by Discipline
+
+```{r}
+renderLeaflet({
+  
+  grads_discipline$text3 <- sprintf(
+"%s",
+ grads_discipline$my_text) %>% 
+ lapply(htmltools::HTML)  
+
+
+  discipline <- grads_discipline %>%
+    filter(Specialty == input$Discipline) 
+
+  
+  pal <- colorNumeric(palette = "viridis",  domain = discipline$n, na.color = "white")
+
+leaflet(discipline) %>% 
+  addPolygons(fillColor = pal(discipline$n),
+              color = "#444444",
+              smoothFactor = .5,
+              popup = discipline$text3,
+              label = discipline$County,
+               labelOptions = labelOptions(style = list("font-weight" = "normal", 
+                                                        padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "25px",
+                                          direction = "auto",
+                                          interactive = TRUE),
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1,
+              highlightOptions = highlightOptions(weight = 5,
+                                           color = "#666",
+                                           fillOpacity = 0,7,
+                                           bringToFront = TRUE)) %>% 
+              addLegend(title = "Grads by Discipline", pal = pal, values = ~discipline$n, opacity = 0.7, position = "topright")
+})
+
+```
+
+All Awardees
+=====================================  
+
+Inputs {.sidebar}
+-------------------------------------
+Awardees by Cycle
+
+```{r}
+
+p("Use the filter by Cycle Year for the Awardees by Cycle Tab and select one or all the disicplines to see where they are located.")
+
+selectInput(inputId = "cycleYear",
+            label = "Cycle Year",
+            choices = unique(all_awardees$Cycle))
+
+checkboxGroupInput(inputId = "Specialty",
+            label = "Discipline",
+            choices = list("FM",
+                           "IM",
+                           "Peds",
+                           "OBGYN",
+                           "EM"),
+            selected = "FM")
+
+```
+
+Total Positions by Cycle
+```{r}
+
+
+selectInput(inputId = "Cycleyear",
+           label = "Select Cycle Year",
+           choices = unique(all_disciplines$Cycle),
+           selected = "All Cycles")
+```
+
+Total Positions by Discipline and Program Type
+```{r}
+
+selectInput(inputId = "discipline",
+           label = "Select Discipline",
+           choices = unique(all_types$Discipline),
+           selected = "All Disciplines")
+
+```
+
+Column {.tabset}
+-------------------------------------
+
+### All Awardees
+
+```{r}
+renderLeaflet({
+
+  #qpal <- colorBin(palette = "viridis",  domain = pcp_cali$ratio, na.color = "white", bins = 5)
+
+leaflet(pcp_cali) %>% 
+  addPolygons(fillColor = "white",
+              color = "#444444",
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+ #addTiles() %>% 
+  addCircles(lng = all_awardees$Longitude, lat = all_awardees$Latitude,
+             color = "red",
+             radius = 15, 
+             weight = 5,
+             opacity = .3) #%>% 
+              #addLegend(title = "Primary Care Physicians per 100,000", pal = qpal, values = ~pcp_cali$ratio, opacity = 0.7,
+  #position = "topright", na.label = "")
+
+})
+
+```
+
+### Awardees by Cycle
+
+```{r}
+
+renderLeaflet({
+all_awardees$Cycle <- factor(all_awardees$Cycle)
+
+pal <- colorFactor(c("#10C637", "#042B46", "#FF982C"), na.color = "white", all_awardees$Cycle)
+
+cycle_year <- all_awardees %>% 
+  filter(Cycle == input$cycleYear,
+         Discipline %in% input$Specialty)
+
+
+
+
+leaflet(pcp_cali) %>% 
+  addPolygons(fillColor = "white",
+              color = "#444444",
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+ #addTiles() %>% 
+  addCircles(lng = cycle_year$Longitude, lat = cycle_year$Latitude,
+             color = ~pal(cycle_year$Cycle),
+             #color = "red",
+             radius = 10, 
+             weight = 10,
+             opacity = 1)
+
+})
+
+
+
+```
+
+Column 
+-------------------------------------
+
+### Total Positions by Cycle
+
+```{r fig.showtext=TRUE}
+renderPlotly({
+  
+  cycleYear <- all_disciplines %>% 
+    filter(Cycle == input$Cycleyear)
+
+  
+plot_ly(data = cycleYear, x = ~Discipline, y = ~positions_awarded,
+        marker = list(color = "#10C637"),
+        text = cycleYear$positions_awarded, textposition = "auto") %>% 
+  add_bars() %>% 
+  layout(yaxis = list(title = "Positions Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Discipline",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         font = list(family = "montserrat"))
+  
+  
+  
+})
+
+```
+
+### Total Positions by Program Type
+
+```{r fig.showtext=TRUE}
+renderPlotly({
+  
+  discipline_type <- all_types %>% 
+    filter(Discipline == input$discipline)
+
+plot_ly(data = discipline_type, x = ~Program.Type, y = ~total.positions,
+        marker = list(color = "#10C637"),
+        text = discipline_type$total.positions, textposition = "auto") %>% 
+  add_bars() %>% 
+  layout(yaxis = list(title = "Positions Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Program Type",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         font = list(family = "montserrat"))
+  
+
+})
+```
+
+Family Medicine
+====================================================
+
+Column {.tabset data-width=500}
+----------------------------------
+
+### # of FM Residents by County
+
+```{r}
+renderLeaflet({
+
+###Create leaflet map
+  
+#Edit the text font to montserrat
+fm_joined$text3 <- sprintf(
+"%s",
+ fm_joined$mytext) %>% 
+ lapply(htmltools::HTML)
+
+  qpal <- colorBin(palette = "viridis",  domain = fm_joined$n, na.color = "white", bins = 5)
+
+leaflet(fm_joined, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(fm_joined$n),
+              label = fm_joined$County,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = fm_joined$text3,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Family Medicine Residents  Funded by CalMedForce Grant", pal = qpal, values = ~fm_joined$n, opacity = 0.7,
+  position = "topright", na.label = "")
+
+
+})
+``` 
+
+### FM Workforce
+
+```{r}
+renderLeaflet({
+  
+  fm_phy$mytext1 <- sprintf(
+"%s",
+ fm_phy$mytext) %>% 
+ lapply(htmltools::HTML)
+  
+  fm_phy$mytext2 <- sprintf(
+ fm_phy$text1) %>% 
+ lapply(htmltools::HTML)
+  
+  
+
+  qpal <- colorBin(palette = "viridis",  domain = fm_phy$ratio, na.color = "white", bins = 5)
+
+leaflet(fm_phy, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(fm_phy$ratio),
+              label = fm_phy$mytext2,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = fm_phy$mytext1,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Family Medicine Physicians  per 100,000", pal = qpal, values = ~fm_phy$ratio, opacity = 0.7,
+  position = "topright", na.label = "")
+
+})
+
+```
+
+
+Column {data-width=300}
+------------------------------
+### FM Programs Awarded by Cycle
+
+```{r}
+renderPlotly({
+  
+cycle_sum <- fm_data %>% 
+  group_by(Cycle) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("Number of Programs Awarded: ", n))
+
+    
+plot_ly(data = cycle_sum, x = ~Cycle, y = ~n, 
+        marker = list(color = "#10C637"),
+        text = cycle_sum$n, textposition = "auto",
+        hoverinfo = "text",
+        hovertext = ~mytext) %>%
+  add_bars() %>% 
+  layout(yaxis = list(title = "Programs Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         uniformtext = list(family = "montserrat"))
+  
+})
+
+```
+
+### FM Positions Awarded by Program Type
+
+```{r}
+renderPlotly({
+
+fm_residents <- fm_data %>% 
+  group_by(Program.Type, Cycle) %>% 
+  summarize(Total.Positions = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste("NUmber of ", Program.Type, " Positions: ", Total.Positions))
+
+
+plot_ly(data = fm_residents, x = ~Program.Type, y = ~Total.Positions,
+        type = "bar", 
+        hoverinfo = "text",
+        text = fm_residents$Total.Positions, textposition = "auto",
+        hovertext = paste("Cycle: ", fm_residents$Cycle, "",
+                          "Number of ", fm_residents$Program.Type, "Positions: ", fm_residents$Total.Positions),
+        transforms = list(
+          list(
+            type = "groupby",
+            groups = fm_residents$Cycle,
+            style = list(
+              list(target = "FY18/19", value = list(marker =list(color = '#042B46'))),
+              list(target = "FY19/20", value = list(marker =list(color = '#10C637'))),
+              list(target = "FY20/21", value = list(marker =list(color = '#FF982C'))),
+              list(target = "FY21/22", value = list(marker =list(color = '#DFE0DE')))
+            )
+          )
+        )) %>%
+  layout(yaxis = list(title = "Positions Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Program type",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         showlegend = TRUE,
+         uniformtext = list(family = "montserrat"),
+         legend = list(title = list(text = "Cycle Year", family = "montserrat")))
+         
+
+}
+)
+
+```
+
+Column {data-width=200}
+-------------------------------------
+
+### FM programs awarded
+
+```{r}
+renderValueBox({
+
+fm_num <- length(fm_data$Program.Name)
+  
+valueBox(fm_num,
+         caption = "# of FM Medicine Programs Awarded",
+               icon = "fa-hospital",
+               color = "#10C637")
+})
+
+```
+
+### FM Resident Positions Funded
+
+```{r}
+renderValueBox({
+
+fm_num <- sum(fm_data$Positions.Awarded)
+  
+valueBox(fm_num,
+         caption = "# of FM Medicine Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded
+
+```{r}
+renderValueBox({
+
+fm_num <- dollar(sum(fm_data$Award.Amount))
+  
+valueBox(fm_num,
+         caption = "Total Amount Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+### Info
+
+The source for PCP can be found here https://data.chhs.ca.gov/dataset/physician-survey. Data was filtered for Family Medicine Physicians and provided patient care of at least 20+ hours.
+
+The Number of Position by Program Type graph on the bottom can be filtered by clicking on the cycle year.
+
+Is there there something else we can had here? 
+
+
+Internal Medicine
+================================================
+
+Column {.tabset .tabset-fade data-width=500}
+----------------------------------
+
+### # of IM Residents by County
+
+```{r}
+renderLeaflet({
+
+###Create leaflet map
+  
+#Edit the text font to montserrat
+im_joined$text3 <- sprintf(
+"%s",
+ im_joined$mytext) %>% 
+ lapply(htmltools::HTML)
+
+  qpal <- colorBin(palette = "viridis",  domain = im_joined$n, na.color = "white", bins = 5)
+
+leaflet(im_joined, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(im_joined$n),
+              label = im_joined$County,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = im_joined$text3,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Internal Medicine Residents  Funded by the CalMedForce Grant", pal = qpal, values = ~im_joined$n, opacity = 0.7,
+  position = "topright", na.label = "")
+
+
+})
+``` 
+
+### IM Workforce
+
+```{r}
+renderLeaflet({
+  
+    im_phy$mytext1 <- sprintf(
+"%s",
+ im_phy$mytext) %>% 
+ lapply(htmltools::HTML)
+    
+        im_phy$mytext2 <- sprintf(
+ im_phy$text1) %>% 
+ lapply(htmltools::HTML)
+  
+
+  qpal <- colorBin(palette = "viridis",  domain = im_phy$ratio, na.color = "white", bins = 5)
+
+leaflet(im_phy) %>% 
+  addPolygons(fillColor = qpal(im_phy$ratio),
+              color = "#444444",
+              label = im_phy$mytext2,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              popup = im_phy$mytext1,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Internal Medicine Physicians per 100,000", pal = qpal, values = ~im_phy$ratio, opacity = 0.7,
+  position = "topright", na.label = "")
+
+})
+
+```
+
+Column {data-width=300}
+--------------------------------
+### IM Programs awarded by Cycle
+
+```{r}
+renderPlotly({
+  
+cycle_sum <- im_data %>% 
+  group_by(Cycle) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("Number of Programs Awarded: ", n))
+
+    
+plot_ly(data = cycle_sum, x = ~Cycle, y = ~n, 
+        marker = list(color = "#10C637"),
+        text = cycle_sum$n, textposition = "auto",
+        hoverinfo = "text",
+        hovertext = ~mytext) %>%
+  add_bars() %>% 
+  layout(yaxis = list(title = "Programs Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         uniformtext = list(family = "montserrat"))
+  
+})
+
+```
+
+### Number of Positions by Program Type
+
+```{r}
+renderPlotly({
+
+im_residents <- im_data %>% 
+  group_by(Program.Type, Cycle) %>% 
+  summarize(Total.Positions = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste("Number of ", Program.Type, " Positions: ", Total.Positions))
+
+
+plot_ly(data = im_residents, x = ~Program.Type, y = ~Total.Positions,
+        type = "bar", 
+        hoverinfo = "text",
+        text = im_residents$Total.Positions, textposition = "auto",
+        hovertext = paste("Cycle: ", im_residents$Cycle, "",
+                          "Number of ", im_residents$Program.Type, "Positions: ", im_residents$Total.Positions),
+        transforms = list(
+          list(
+            type = "groupby",
+            groups = im_residents$Cycle,
+            style = list(
+              list(target = "FY18/19", value = list(marker =list(color = '#042B46'))),
+              list(target = "FY19/20", value = list(marker =list(color = '#10C637'))),
+              list(target = "FY20/21", value = list(marker =list(color = '#FF982C'))),
+              list(target = "FY21/22", value = list(marker =list(color = '#DFE0DE')))
+            )
+          )
+        )) %>%
+  layout(yaxis = list(title = "Positions Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Program Type",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         showlegend = TRUE,
+         uniformtext = list(family = "montserrat"),
+         legend = list(title = list(text = "Cycle Year", family = "montserrat")))
+         
+
+}
+)
+
+```
+
+Column {data-width=200}
+-------------------------------------
+
+### IM programs awarded
+
+```{r}
+renderValueBox({
+
+im_num <- length(im_data$Program.Name)
+  
+valueBox(im_num,
+         caption = "# of IM Medicine Programs Awarded",
+               icon = "fa-hospital",
+               color = "#10C637")
+})
+
+```
+
+### IM Resident Positions Funded
+
+```{r}
+renderValueBox({
+
+im_num <- sum(im_data$Positions.Awarded)
+  
+valueBox(im_num,
+         caption = "# of IM Medicine Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded
+
+```{r}
+renderValueBox({
+
+im_num <- dollar(sum(im_data$Award.Amount))
+  
+valueBox(im_num,
+         caption = "Total Amount Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+
+### Info
+
+The source for PCP can be found here https://data.chhs.ca.gov/dataset/physician-survey. Data was filtered for Internal Medicine Physicians and provided patient care of at least 20+ hours.
+
+The Number of Positions by Program Type graph on the bottom can be filtered by clicking on the cycle year.
+
+Is there there something else we can had here? 
+
+
+Pediatrics
+========================================================
+
+Column {.tabset .tabset-fade data-width=500}
+----------------------------------
+
+### # of Ped Residents by County
+
+```{r}
+renderLeaflet({
+
+###Create leaflet map
+  
+#Edit the text font to montserrat
+peds_joined$text3 <- sprintf(
+"%s",
+ peds_joined$mytext) %>% 
+ lapply(htmltools::HTML)
+
+  qpal <- colorBin(palette = "viridis",  domain = peds_joined$n, na.color = "white", bins = 5)
+
+leaflet(peds_joined, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(peds_joined$n),
+              label = peds_joined$County,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = peds_joined$text3,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Pediatric Residents  Funded by the CalMedForce Grant", pal = qpal, values = ~peds_joined$n, opacity = 0.7,
+  position = "topright", na.label = "")
+
+
+})
+``` 
+
+### Peds Workforce
+
+```{r}
+renderLeaflet({
+
+    peds_phy$mytext1 <- sprintf(
+"%s",
+ peds_phy$mytext) %>% 
+ lapply(htmltools::HTML)
+    
+        peds_phy$mytext2 <- sprintf(
+ peds_phy$text1) %>% 
+ lapply(htmltools::HTML)
+
+  qpal <- colorBin(palette = "viridis",  domain = peds_phy$ratio, na.color = "white", bins = 5)
+
+leaflet(peds_phy) %>% 
+  addPolygons(fillColor = qpal(peds_phy$ratio),
+              color = "#444444",
+              label = peds_phy$mytext2,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              popup = peds_phy$mytext1,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Pediatric Physicians per 100,000", pal = qpal, values = ~peds_phy$ratio, opacity = 0.7,
+  position = "topright", na.label = "")
+
+})
+
+```
+
+Column {data-width=300}
+--------------------------------
+### Ped Programs awarded by Cycle
+
+```{r}
+renderPlotly({
+  
+cycle_sum <- Peds_data %>% 
+  group_by(Cycle) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("Number of Programs Awarded: ", n))
+
+    
+plot_ly(data = cycle_sum, x = ~Cycle, y = ~n, 
+        marker = list(color = "#10C637"),
+        hoverinfo = "text",
+        text = cycle_sum$n, textposition = "auto",
+        hovertext = ~mytext) %>%
+  add_bars() %>% 
+  layout(yaxis = list(title = "Programs Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         uniformtext = list(family = "montserrat"))
+  
+})
+
+```
+
+### Number of Positions by Program Type
+
+```{r}
+renderPlotly({
+
+ped_residents <- Peds_data %>% 
+  group_by(Program.Type, Cycle) %>% 
+  summarize(Total.Positions = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste("Number of ", Program.Type, " Positions: ", Total.Positions))
+
+
+plot_ly(data = ped_residents, x = ~Program.Type, y = ~Total.Positions,
+        type = "bar", 
+        hoverinfo = "text",
+        text = ped_residents$Total.Positions, textposition = "auto",
+        hovertext = paste("Cycle: ", ped_residents$Cycle, "",
+                          "Number of ", ped_residents$Program.Type, "Positions: ", ped_residents$Total.Positions),
+        transforms = list(
+          list(
+            type = "groupby",
+            groups = ped_residents$Cycle,
+            style = list(
+              list(target = "FY18/19", value = list(marker =list(color = '#042B46'))),
+              list(target = "FY19/20", value = list(marker =list(color = '#10C637'))),
+              list(target = "FY20/21", value = list(marker =list(color = '#FF982C'))),
+              list(target = "FY21/22", value = list(marker =list(color = '#DFE0DE')))
+            )
+          )
+        )) %>%
+  layout(yaxis = list(title = "Program Type",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         showlegend = TRUE,
+         uniformtext = list(family = "montserrat"),
+         legend = list(title = list(text = "Cycle Year", family = "montserrat")))
+         
+
+}
+)
+
+```
+
+Column {data-width=200}
+-------------------------------------
+
+### Ped programs awarded
+
+```{r}
+renderValueBox({
+
+Peds_num <- length(Peds_data$Program.Name)
+  
+valueBox(Peds_num,
+         caption = "# of Ped Programs Awarded",
+               icon = "fa-hospital",
+               color = "#10C637")
+})
+
+```
+
+### Ped Resident Positions Funded
+
+```{r}
+renderValueBox({
+
+Peds_num <- sum(Peds_data$Positions.Awarded)
+  
+valueBox(Peds_num,
+         caption = "# of Ped Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded
+
+```{r}
+renderValueBox({
+
+Peds_num <- dollar(sum(Peds_data$Award.Amount))
+  
+valueBox(Peds_num,
+         caption = "Total Amount Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+### Info
+
+The source for PCP can be found here https://data.chhs.ca.gov/dataset/physician-survey. Data was filtered for Pediatricians and provided patient care of at least 20+ hours.
+
+The Positions Awarded by Program Type graph on the bottom can be filtered by clicking on the cycle year.
+
+Is there there something else we can had here? 
+
+
+OBGYN
+=======================================================
+
+Column {.tabset .tabset-fade data-width=500}
+----------------------------------
+
+### # of OBGYN Residents by County
+
+```{r}
+renderLeaflet({
+
+###Create leaflet map
+  
+#Edit the text font to montserrat
+ob_joined$text3 <- sprintf(
+"%s",
+ ob_joined$mytext) %>% 
+ lapply(htmltools::HTML)
+
+qpal <- colorBin(palette = "viridis",  domain = ob_joined$n, na.color = "white", bins = 5)
+
+leaflet(ob_joined, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(ob_joined$n),
+              label = ob_joined$County,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = ob_joined$text3,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "OBGYN Residents  Funded by the CalMedForce Grant", pal = qpal, values = ~ob_joined$n, opacity = 0.7,
+  position = "topright", na.label = "")
+
+
+})
+```
+
+### OBGYN Workforce
+
+```{r}
+renderLeaflet({
+  
+    ob_phy$mytext1 <- sprintf(
+"%s",
+ ob_phy$mytext) %>% 
+ lapply(htmltools::HTML)
+    
+        ob_phy$mytext2 <- sprintf(
+ ob_phy$text1) %>% 
+ lapply(htmltools::HTML)
+
+  qpal <- colorBin(palette = "viridis",  domain = ob_phy$ratio, na.color = "white", bins = 4)
+
+leaflet(ob_phy) %>% 
+  addPolygons(fillColor = qpal(ob_phy$ratio),
+              color = "#444444",
+              label = ob_phy$mytext2,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              popup = ob_phy$mytext1,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "OBGYN Physicians per 100,000", pal = qpal, values = ~ob_phy$ratio, opacity = 0.7,
+  position = "topright", na.label = "")
+
+})
+
+```
+
+Column {data-width=300}
+--------------------------------
+### OBGYN Programs awarded by Cycle
+
+```{r}
+renderPlotly({
+  
+cycle_sum <- OB_data %>% 
+  group_by(Cycle) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("Number of Programs Awarded: ", n))
+
+    
+plot_ly(data = cycle_sum, x = ~Cycle, y = ~n, 
+        marker = list(color = "#10C637"),
+        hoverinfo = "text",
+        text = cycle_sum$n, textposition = "auto",
+        hovertext = ~mytext) %>%
+  add_bars() %>% 
+  layout(yaxis = list(title = "Programs Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         uniformtext = list(family = "montserrat"))
+  
+})
+
+```
+
+### Number of Positions by Program Type
+
+```{r}
+renderPlotly({
+
+ob_residents <- OB_data %>% 
+  group_by(Program.Type, Cycle) %>% 
+  summarize(Total.Positions = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste("Number of ", Program.Type, " Positions: ", Total.Positions))
+
+
+plot_ly(data = ob_residents, x = ~Program.Type, y = ~Total.Positions,
+        type = "bar", 
+        hoverinfo = "text",
+        text = ob_residents$Total.Positions, textposition = "auto",
+        hovertext = paste("Cycle: ", ob_residents$Cycle, "",
+                          "Number of ", ob_residents$Program.Type, "Positions: ", ob_residents$Total.Positions),
+        transforms = list(
+          list(
+            type = "groupby",
+            groups = ob_residents$Cycle,
+            style = list(
+              list(target = "FY18/19", value = list(marker =list(color = '#042B46'))),
+              list(target = "FY19/20", value = list(marker =list(color = '#10C637'))),
+              list(target = "FY20/21", value = list(marker =list(color = '#FF982C'))),
+              list(target = "FY21/22", value = list(marker =list(color = '#DFE0DE')))
+            )
+          )
+        )) %>%
+  layout(yaxis = list(title = "Positions Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Program Type",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         showlegend = TRUE,
+         uniformtext = list(family = "montserrat"),
+         legend = list(title = list(text = "Cycle Year", family = "montserrat")))
+         
+
+}
+)
+
+```
+
+
+Column {data-width=200}
+-------------------------------------
+
+### OBGYN programs awarded
+
+```{r}
+renderValueBox({
+
+ob_num <- length(OB_data$Program.Name)
+  
+valueBox(ob_num,
+         caption = "# of OBGYN Programs Awarded",
+               icon = "fa-hospital",
+               color = "#10C637")
+})
+
+```
+
+### OBGYN Resident Positions Funded
+
+```{r}
+renderValueBox({
+
+ob_num <- sum(OB_data$Positions.Awarded)
+  
+valueBox(ob_num,
+         caption = "# of OBGYN Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded
+
+```{r}
+renderValueBox({
+
+ob_num <- dollar(sum(OB_data$Award.Amount))
+  
+valueBox(ob_num,
+         caption = "Total Amount Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+### Info
+
+The source for PCP can be found here https://data.chhs.ca.gov/dataset/physician-survey. Data was filtered for OBGYN Physicians and provided patient care of at least 20+ hours.
+
+The OBGYN Position Awarded by Program Type graph on the bottom can be filtered by clicking on the cycle year.
+
+Is there there something else we can had here? 
+
+Emergency Medicine
+========================================================
+
+Column {.tabset .tabset-fade data-width=500}
+--------------------------------
+
+### # of EM Residents by County
+
+```{r}
+renderLeaflet({
+
+###Create leaflet map
+  
+#Edit the text font to montserrat
+em_joined$text3 <- sprintf(
+"%s",
+ em_joined$mytext) %>% 
+ lapply(htmltools::HTML)
+
+qpal <- colorBin(palette = "viridis",  domain = em_joined$n, na.color = "white", bins = 5)
+
+leaflet(em_joined, options = leafletOptions(zoomControl = FALSE)) %>% 
+  addPolygons(fillColor = qpal(em_joined$n),
+              label = em_joined$County,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              color = "#444444",
+              popup = em_joined$text3,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Emergency Medicine Residents  Funded by the CalMedForce Grant", pal = qpal, values = ~em_joined$n, opacity = 0.7,
+  position = "topright", na.label = "")
+
+
+})
+```
+
+### EM Workforce
+
+```{r}
+renderLeaflet({
+  
+  em_phy$mytext1 <- sprintf(
+"%s",
+ em_phy$mytext) %>% 
+ lapply(htmltools::HTML)
+
+    em_phy$mytext2 <- sprintf(
+ em_phy$text1) %>% 
+ lapply(htmltools::HTML)
+
+  
+  
+  qpal <- colorBin(palette = "viridis",  domain = em_phy$ratio, na.color = "white", bins = 5)
+
+leaflet(em_phy) %>% 
+  addPolygons(fillColor = qpal(em_phy$ratio),
+              color = "#444444",
+              label = em_phy$mytext2,
+              labelOptions = labelOptions(style = list("font-weight" = "normal",
+                                                       padding = "3px 8px",
+                                                       "font-family" = "Montserrat"),
+                                          textsize = "18px"),
+              popup = em_phy$mytext1,
+              smoothFactor = .5,
+              weight = 1,
+              opacity = 1.0,
+              fillOpacity = 1) %>% 
+              addLegend(title = "Emergency Medicine Physicians per 100,000", pal = qpal, values = ~em_phy$ratio, opacity = 0.7,
+  position = "topright", na.label = "")
+
+})
+
+```
+
+Column {data-width=300}
+--------------------------------
+### EM Programs awarded by Cycle
+
+```{r}
+renderPlotly({
+  
+cycle_sum <- em_data %>% 
+  group_by(Cycle) %>% 
+  summarize(n = n()) %>% 
+  mutate(mytext = paste0("Number of Programs Awarded: ", n))
+
+    
+plot_ly(data = cycle_sum, x = ~Cycle, y = ~n, 
+        marker = list(color = "#10C637"),
+        hoverinfo = "text",
+        text = cycle_sum$n, textposition = "auto",
+        hovertext = ~mytext,
+        textfont = list(family = "montserrat")) %>%
+  add_bars() %>% 
+  layout(yaxis = list(title = "Programs Awarded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Cycle Year",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         uniformtext = list(family = "montserrat"))
+  
+})
+
+```
+
+### Number of Positions by Program Type
+
+```{r}
+renderPlotly({
+
+em_residents <- em_data %>% 
+  group_by(Program.Type, Cycle) %>% 
+  summarize(Total.Positions = sum(Positions.Awarded)) %>% 
+  mutate(mytext = paste("Number of ", Program.Type, " Positions: ", Total.Positions))
+
+
+plot_ly(data = em_residents, x = ~Program.Type, y = ~Total.Positions,
+        type = "bar", 
+        hoverinfo = "text",
+        text = em_residents$Total.Positions, textposition = "auto",
+        hovertext = paste("Cycle: ", em_residents$Cycle, "",
+                          "Number of ", em_residents$Program.Type, "Positions: ", em_residents$Total.Positions),
+        transforms = list(
+          list(
+            type = "groupby",
+            groups = em_residents$Cycle,
+            style = list(
+              list(target = "FY18/19", value = list(marker =list(color = '#042B46'))),
+              list(target = "FY19/20", value = list(marker =list(color = '#10C637'))),
+              list(target = "FY20/21", value = list(marker =list(color = '#FF982C'))),
+              list(target = "FY21/22", value = list(marker =list(color = '#DFE0DE')))
+            )
+          )
+        )) %>%
+  layout(yaxis = list(title = "Positions Funded",
+                      titlefont = list(family = "montserrat"),
+                      tickfont = list(family = "montserrat")),
+         xaxis = list(title = "Program Type",
+                     titlefont = list(family = "montserrat"),
+                     tickfont = list(family = "montserrat")),
+         hoverlabel = list(font = list(family = "montserrat")),
+         font = list(family = "montserrat"),
+         showlegend = TRUE,
+         uniformtext = list(family = "montserrat"),
+         legend = list(title = list(text = "Cycle Year", family = "montserrat")))
+         
+
+}
+)
+
+```
+
+Column {data-width=200}
+-------------------------------------
+
+### EM programs awarded
+
+```{r}
+renderValueBox({
+
+em_num <- length(em_data$Program.Name)
+  
+valueBox(em_num,
+         caption = "# of EM Programs Awarded",
+               icon = "fa-hospital",
+               color = "#10C637")
+})
+
+```
+
+### EM Resident Positions Funded
+
+```{r}
+renderValueBox({
+
+em_num <- sum(em_data$Positions.Awarded)
+  
+valueBox(em_num,
+         caption = "# of EM Positions Funded",
+               icon = "fa-user-md",
+               color = "#10C637")
+})
+
+```
+
+### Total Funds Awarded
+
+```{r}
+renderValueBox({
+
+em_num <- dollar(sum(em_data$Award.Amount))
+  
+valueBox(em_num,
+         caption = "Total Amount Awarded",
+               icon = "fa-money",
+               color = "#10C637")
+})
+
+```
+
+### Info
+
+The source for PCP can be found here https://data.chhs.ca.gov/dataset/physician-survey. Data was filtered for Emergency Medicine Physicians and provided patient care of at least 20+ hours.
+
+The EM Position Awarded by Program Type graph on the bottom can be filtered by clicking on the cycle year.
+
+Is there there something else we can had here? 
