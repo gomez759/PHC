@@ -1,1 +1,215 @@
+library(tigris)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(mapdata)
+library(ggmap)
+library(viridis)
+library(ggrepel)
+library(showtext)
+library(stringr)
+
+# READ IN DATA
+cali <- counties("California", cb = TRUE)
+
+colnames(cali)[6] <- "County"
+
+#read in data
+#chc_Data <- read.csv("chc_data.csv", stringsAsFactors = FALSE)
+
+df <- read.csv("chc_all_cohorts.csv", stringsAsFactors = FALSE)
+
+#rename column for county
+#colnames(chc_Data)[4] <- "County"
+colnames(df)[4] <- "County"
+
+df$County <- str_squish(df$County)
+#chc_Data$County <- str_squish(chc_Data$County)
+
+#group by Physicians and county to get total county by county
+#physicians <- chc_Data %>% filter(Awardee.Type == "Physician") %>% 
+ # group_by(County) %>% 
+  #summarize(n = n())
+
+# filter for cohort 1
+physicians <- df %>% filter(Awardee.Type == "Physician" & Cohort == "FY 2018 - 19 Cohort 1") %>% 
+  group_by(County) %>% 
+  summarize(n = n())
+
+#filter for cohort 2
+cohort2 <- df %>% filter(Awardee.Type == "Physician" & Cohort == "FY 2019 - 20 Cohort 2") %>% 
+  group_by(County) %>% 
+  summarize(n = n())
+
+#filter for cohort 3
+cohort3 <- df %>% filter(Awardee.Type == "Physician" & Cohort == "FY 2020 - 21 Cohort 3") %>% 
+  group_by(County) %>% 
+  summarize(n = n())
+
+
+#remove original data 
+rm(df)
+
+#merge California map with dentist and physican maps
+physician_joined <- left_join(cali, physicians, by = "County")
+
+#merge cohort 2 with Cali data
+cohort2_joined <- left_join(cali, cohort2, by = "County")
+
+#merge cohort 3 with Cali Data
+cohort3_joined <- left_join(cali, cohort3, by = "County")
+
+
+#subset physican data to incude cali geo data for labeling purposes
+sub_physician <- subset(physician_joined, physician_joined$County %in% physicians$County)
+#subsetting for physician data to only include top ten counties, for labeling purposes
+sub_physician_top_ten <- sub_physician %>% filter(n >= 7) %>%
+                            mutate(new.text = paste(County, ": ", n, sep = ""))
+
+#subset Cohort 2 data
+sub_cohort2 <- subset(cohort2_joined, cohort2_joined$County %in% cohort2$County)
+#subsetting for physician data to only include top ten counties, for labeling purposes
+sub_cohort2_top_ten <- sub_cohort2 %>% filter(n >= 9) %>%
+                            mutate(new.text = paste(County, ": ", n, sep = ""))
+
+#subset cohort 3 data
+sub_cohort3 <- subset(cohort3_joined, cohort3_joined$County %in% cohort3$County)
+#subsetting for physician data to only include top ten counties, for labeling purposes
+sub_cohort3_top_ten <- sub_cohort3 %>% filter(n >= 6) %>%
+                            mutate(new.text = paste(County, ": ", n, sep = ""))
+
+#remove original data
+rm(list = c("physicians", "cohort2", "cohort3"))
+
+cmap <- ggplot()
+
+#to get rid of axis
+ditch_the_axes <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank()
+)
+
+showtext_auto()
+
+##map highlighting all counties
+#cohort_one_all_phys <- cmap +
+#  geom_sf(data = physician_joined, fill = "white") +
+#  geom_sf(data = sub_physician, aes(fill = n)) +
+#  labs(
+#    title = "Cohort 1 - Physicians",
+#    fill = "Number of Physicians") +
+#  scale_fill_distiller(palette = "Blues", direction = 1) +
+#  geom_label_repel(data = sub_physician, aes(label = County, geometry = geometry),
+#                   size = 6,
+#                   min.segment.length = .5,
+#                   color = "black",
+#                   segment.color = "transparent",
+#                   stat = "sf_coordinates", family = "montserrat",
+#                   show.legend = FALSE) +
+#  ditch_the_axes +
+#  theme(
+#    plot.title = element_text(size = 28, family = "montserrat"),
+#    legend.title = element_text(size = 22, family = "montserrat"),
+#    legend.text = element_text(size = 20, family = "montserrat")) +
+#  theme_nothing(legend = TRUE)
+#
+#cohort_one_all_phys
+#
+#ggsave("chc_physicians_cohort1_no_lines.png", cohort_one_all_phys, width = 15, height = 15, units = "cm")
+
+
+#Map for cohort 1 physcians highlighting top ten counties
+cohort_1_physicians <- cmap +
+  geom_sf(data = physician_joined, fill = "white") +
+  geom_sf(data = sub_physician, aes(fill = n)) +
+  ggtitle("Cohort 1 - Physicians") +
+  labs(
+    #title = "Cohort 1 - Physicians",
+    fill = "Number of Physicians") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  geom_label_repel(data = sub_physician_top_ten, aes(label = new.text, geometry = geometry),
+                   size = 6,
+                   min.segment.length = .5,
+                   color = "black",
+                   segment.color = "transparent",
+                   stat = "sf_coordinates", family = "montserrat",
+                   show.legend = FALSE) +
+  ditch_the_axes +
+  theme(
+    plot.title = element_text(size = 50, family = "montserrat"),
+    legend.title = element_text(size = 40, family = "montserrat"),
+    legend.text = element_text(size = 35, family = "montserrat")) +
+  theme_nothing(legend = TRUE)
+
+cohort_1_physicians
+
+#Physician Map cohort 1 with on top 10 labeled
+ggsave("cohort_1_physicians_top_10.png", cohort_1_physicians, width = 15, height = 15, units = "cm")
+
+rm(list = c("cohort_1_physicians", "cohort_one_all_phys", "physician_joined",
+            "sub_physician_top_ten", "sub_physician"))
+
+###Create map for Cohort 2
+cohort2_Map <- cmap +
+  geom_sf(data = cohort2_joined, fill = "white") +
+  geom_sf(data = sub_cohort2, aes(fill = n)) +
+  ggtitle("Cohort 2 - Physicians") +
+  labs(
+    #title = "Cohort 1 - Physicians",
+    fill = "Number of Physicians") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  geom_label_repel(data = sub_cohort2_top_ten, aes(label = new.text, geometry = geometry),
+                   size = 6,
+                   min.segment.length = .5,
+                   color = "black",
+                   segment.color = "transparent",
+                   stat = "sf_coordinates", family = "montserrat",
+                   show.legend = FALSE) +
+  ditch_the_axes +
+  theme(
+    plot.title = element_text(size = 50, family = "montserrat"),
+    legend.title = element_text(size = 40, family = "montserrat"),
+    legend.text = element_text(size = 35, family = "montserrat")) +
+  theme_nothing(legend = TRUE)
+
+cohort2_Map
+
+ggsave("cohort_2_physicians_top_8.png", cohort2_Map, width = 15, height = 15, units = "cm")
+
+rm(list = c("cohort2_joined", "sub_cohort2", "sub_cohort2_top_ten", "cohort2_Map"))
+
+#Create map for cohort 3
+cohort3_Map <- cmap +
+  geom_sf(data = cohort3_joined, fill = "white") +
+  geom_sf(data = sub_cohort3, aes(fill = n)) +
+  ggtitle("Cohort 3 - Physicians") +
+  labs(
+    #title = "Cohort 1 - Physicians",
+    fill = "Number of Physicians") +
+  scale_fill_distiller(palette = "Blues", direction = 1) +
+  geom_label_repel(data = sub_cohort3_top_ten, aes(label = new.text, geometry = geometry),
+                   size = 6,
+                   min.segment.length = .5,
+                   color = "black",
+                   segment.color = "transparent",
+                   stat = "sf_coordinates", family = "montserrat",
+                   show.legend = FALSE) +
+  ditch_the_axes +
+  theme(
+    plot.title = element_text(size = 50, family = "montserrat"),
+    legend.title = element_text(size = 40, family = "montserrat"),
+    legend.text = element_text(size = 35, family = "montserrat")) +
+  theme_nothing(legend = TRUE)
+
+cohort3_Map
+
+ggsave("cohort_3_physicians_top_10.png", cohort3_Map, width = 15, height = 15, units = "cm")
+
+rm(list = c("cohort3_joined", "sub_cohort3", "sub_cohort3_top_ten", "cohort3_Map"))
+
+
 
