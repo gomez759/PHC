@@ -1,0 +1,155 @@
+library(dplyr)
+library(qdapRegex)
+library(stringr)
+library(reshape2)
+library(tidyr)
+
+x <- read.csv("resident_table.csv", stringsAsFactors = FALSE)
+
+x <- x %>% filter(Resident.Table != "")
+
+#remove the ?
+x$Resident.Table <- str_remove_all(x$Resident.Table, "\\?")
+#to remove tabs
+x$Resident.Table <- str_remove_all(x$Resident.Table, "\\t")
+
+#this is to remove any punctuation characters
+#x$Resident.Table <- str_remove_all(x$Resident.Table, regex("[:punct:]"))
+
+#this is to remove any quotes
+x$Resident.Table <- str_remove_all(x$Resident.Table, regex("\""))
+
+#start removing any unnecessary characters
+x$Resident.Table <- str_remove_all(x$Resident.Table, "<xml version=1.0 encoding=UTF-8><worksheet>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "<Resident-Table>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "<Row>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "<total>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "</total>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "</Resident-Table>")
+x$Resident.Table <- str_remove_all(x$Resident.Table, "</worksheet>")
+
+
+#replace characters
+x$Resident.Table <- str_replace_all(x$Resident.Table, "<Resident-Name>", "Resident Name: ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "</Resident-Name>", ",  ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "<NPI-Number>", "NPI Number: ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "</NPI-Number>", ",  ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "<Gender>", "Gender: ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "</Gender>", ",  ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "<Race-Ethinic-Category>", "Race-Ethinic-Category: ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "</Race-Ethinic-Category>", ",  ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "<Description-of-Changes>", "Description-of-Changes: ")
+x$Resident.Table <- str_replace_all(x$Resident.Table, "</Description-of-Changes>", ": ")
+
+
+#reduce the white space in resident table
+x$Resident.Table <- str_squish(x$Resident.Table)
+
+#x$Resident.Table <- str_remove_all(x$Resident.Table, "\\n")
+
+
+#the the grant ID to have the year
+ncols <- max(str_count(x$Resident.Table, "</Row>")) + 1
+
+#generate necessary column names
+colmn <- paste("col", 1:ncols)
+
+#separate the GrantID to get the year
+x <- cbind(x, colsplit(x$Resident.Table, "</Row>", colmn))
+
+#remove unnecessary column
+x <- x %>% select(-c(Resident.Table, "col 37"))
+
+#transpose the dataset to manipulate the data
+x_longer <- x %>% pivot_longer(cols = starts_with("col"),
+                           names_to = "Resident_Table",
+                           values_drop_na = TRUE) %>% 
+              filter(value != "")
+
+
+
+#break down resident info further
+x_longer$value <- str_remove_all(x_longer$value, "Resident Name: ")
+#x_longer$value <- str_remove_all(x_longer$value, "NPI Number: ")
+x_longer$value <- str_replace_all(x_longer$value, ", NPI Number:", "split")
+x_longer$value <- str_replace_all(x_longer$value, ", Gender:", "split")
+x_longer$value <- str_replace_all(x_longer$value, ", Race-Ethinic-Category:", "split")
+x_longer$value <- str_replace_all(x_longer$value, ", Description-of-Changes:", "split")
+
+#rename some race categories
+x_longer$value <- str_replace_all(x_longer$value, "White/Caucasion, European/Middle Eastern", "White/Caucasian/European/Middle Eastern")
+x_longer$value <- str_replace_all(x_longer$value, "Black, African American or African", "Black/African American or African")
+
+
+#separate each value to own column
+#the the grant ID to have the year
+ncols <- max(str_count(x_longer$value, "split")) + 1
+
+#generate necessary column names
+colmn <- paste("col", 1:ncols)
+
+#separate the GrantID to get the year
+x_longer <- cbind(x_longer, colsplit(x_longer$value, "split", colmn))
+
+x_longer <- x_longer %>% select(-c(value, Resident_Table))
+
+#rename columns 5 to 9
+colnames(x_longer)[c(5:9)] <- c("Resident_Name", "NPI_Number", "Gender", "Race_Ethnicity", "Other")
+
+#the the grant ID to have the year
+ncols <- max(str_count(x$Grant.ID, "-")) + 1
+
+#generate necessary column names
+colmn <- paste("col", 1:ncols)
+
+#separate the GrantID to get the year
+x_longer <- cbind(x_longer, colsplit(x_longer$Grant.ID, "-", colmn))
+
+#rename column for the year
+colnames(x_longer)[11] <- "Year"
+
+#Remove any uncessary columns
+x_longer <- x_longer %>% select(c(-2, -10))
+
+#x <- x[-65,]
+
+#create new column with discipline names
+x_longer$Discipline <- ifelse(grepl("Family", x_longer$Organization), "FM",
+                       ifelse(grepl("Emergency", x_longer$Organization), "EM", 
+                               ifelse(grepl("Internal", x_longer$Organization), "IM", 
+                                      ifelse(grepl("Obstet", x_longer$Organization), "OBGYN", 
+                                            ifelse(grepl("Pediat", x_longer$Organization), "Peds",
+                                                  ifelse(grepl("Child", x_longer$Organization), "Peds",NA))))))
+
+#make year a character type
+x_longer$Year <- as.character(x_longer$Year)
+
+#reduce the white space in gender and race/ethnic column
+x_longer$Gender <- str_squish(x_longer$Gender)
+x_longer$Race_Ethnicity <- str_squish(x_longer$Race_Ethnicity)
+x_longer$Resident_Name <- str_squish(x_longer$Resident_Name)
+
+x_longer <- x_longer %>% filter(Resident_Name != "N/A")
+
+
+
+
+
+group_summary <- x_longer %>% 
+  group_by(Discipline, Year) %>% 
+  summarize(Male = sum(Gender == "Male"),
+            Female = sum(Gender == "Female"),
+            White = sum(Race_Ethnicity == "White/Caucasian/European/Middle Eastern"),
+            Black = sum(Race_Ethnicity == "Black/African American or African"),
+            Hispanic = sum(Race_Ethnicity == "Hispanic or Latino"),
+            Asian = sum(Race_Ethnicity == "Asian"),
+            NH = sum(Race_Ethnicity == "Native Hawaiian or Other Pacific Islander"),
+            AI = sum(Race_Ethnicity == "American Indian, Native American or Alaska Native"))
+
+
+
+
+
+write.csv(x_longer, "SAR_resident_table.csv", row.names = FALSE)
+
+write.csv(group_summary, "res_summary.csv", row.names = FALSE)
